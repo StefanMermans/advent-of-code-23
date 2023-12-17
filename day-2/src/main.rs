@@ -1,25 +1,89 @@
-use std::{collections::HashMap, fs::File, io::BufRead, io::BufReader};
+use std::{fs::File, io::BufRead, io::BufReader};
+
+#[derive(Debug)]
+struct RGB {
+    pub r: u32,
+    pub g: u32,
+    pub b: u32,
+}
+
+impl RGB {
+    pub fn empty() -> Self {
+        Self { r: 0, g: 0, b: 0 }
+    }
+
+    pub fn from(r: u32, g: u32, b: u32) -> Self {
+        Self { r, g, b }
+    }
+
+    pub fn set(&mut self, key: &char, value: u32) {
+        match key {
+            'r' => self.r = value,
+            'g' => self.g = value,
+            'b' => self.b = value,
+            _ => (),
+        }
+    }
+
+    pub fn get(&self, key: &char) -> u32 {
+        match key {
+            'r' => self.r,
+            'g' => self.g,
+            'b' => self.b,
+            _ => 0,
+        }
+    }
+
+    pub fn lt(&self, other: &RGB) -> bool {
+        if self.r > other.r {
+            return false;
+        }
+
+        if self.g > other.g {
+            return false;
+        }
+
+        if self.b > other.b {
+            return false;
+        }
+
+        return true;
+    }
+
+    pub fn power(&self) -> u32 {
+        self.r * self.g * self.b
+    }
+}
 
 fn main() {
     let file = File::open("input.txt").unwrap();
     let reader = BufReader::new(&file);
-    let max_values = HashMap::from([("red", 12), ("green", 13), ("blue", 14)]);
+    let max_values = RGB::from(12, 13, 14);
     let mut total = 0;
+    let mut power = 0;
 
     for line in reader.lines() {
         if let Ok(line) = line {
-            total += validate_line(line, &max_values);
+            let (id, values) = parse_game(line);
+
+            power += values.power();
+
+            if values.lt(&max_values) {
+                total += id;
+            }
         }
     }
 
     println!("total {}", total);
+    println!("power {}", power);
 }
 
-fn validate_line(line: String, max_values: &HashMap<&str, i32>) -> u32 {
+fn parse_game(line: String) -> (u32, RGB) {
+    let mut values = RGB::empty();
     let (id, offset) = game_id(&line);
-    let rest = &line[offset + 2..];
+    let line = &line[offset + 2..];
 
-    for set in rest.split("; ") {
+    for set in line.split("; ") {
         for combination in set.split(", ") {
             let mut amount_string = String::new();
             let mut amount = 0;
@@ -35,16 +99,12 @@ fn validate_line(line: String, max_values: &HashMap<&str, i32>) -> u32 {
                 index += 1;
             }
 
-            let rest = &combination[index + 1..];
-            let max = max_values[rest];
-
-            if amount > max {
-                return 0;
-            }
+            let color = &combination[index + 1..].chars().nth(0).unwrap();
+            values.set(color, std::cmp::max(values.get(color), amount));
         }
     }
 
-    return id;
+    (id, values)
 }
 
 fn game_id(line: &String) -> (u32, usize) {
